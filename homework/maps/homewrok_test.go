@@ -78,19 +78,12 @@ func (m *OrderedMap[T, V]) eraseImpl(node **treeNode[T, V], key T) {
 		}
 
 		minRight := (*node).right
-		parentMinRight := *node
 		for minRight.left != nil {
-			parentMinRight = minRight
 			minRight = minRight.left
 		}
 		(*node).key = minRight.key
 		(*node).value = minRight.value
-		if parentMinRight == *node {
-			(*node).right = nil
-			(*parentMinRight).left = nil
-		} else {
-			(*parentMinRight).left = minRight.right
-		}
+		*minRight = *(minRight).right
 		return
 	}
 	m.eraseImpl(&(*node).left, key)
