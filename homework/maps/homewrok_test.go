@@ -31,11 +31,11 @@ func NewOrderedMap[T comparable, V any](sortFn SortFunc[T]) OrderedMap[T, V] {
 }
 
 func (m *OrderedMap[T, V]) Insert(key T, value V) {
-	m.size++
 	if m.root == nil {
 		m.root = &treeNode[T, V]{
 			key: key,
 		}
+		m.size++
 		return
 	}
 	m.insertImpl(m.root, key, value)
@@ -110,12 +110,15 @@ func (m *OrderedMap[T, V]) forEachImpl(node *treeNode[T, V], action func(T, V)) 
 }
 
 func (m *OrderedMap[T, V]) insertImpl(node *treeNode[T, V], key T, value V) {
-	if m.sortFn(node.key, key) > 0 {
+	if node.key == key {
+		node.value = value
+	} else if m.sortFn(node.key, key) > 0 {
 		if node.left == nil {
 			node.left = &treeNode[T, V]{
 				key:   key,
 				value: value,
 			}
+			m.size++
 		} else {
 			m.insertImpl(node.left, key, value)
 		}
@@ -125,6 +128,7 @@ func (m *OrderedMap[T, V]) insertImpl(node *treeNode[T, V], key T, value V) {
 				key:   key,
 				value: value,
 			}
+			m.size++
 		} else {
 			m.insertImpl(node.right, key, value)
 		}
@@ -141,6 +145,7 @@ func TestOrderedMap(t *testing.T) {
 	data.Insert(5, 5)
 	data.Insert(15, 15)
 	data.Insert(2, 2)
+	data.Insert(4, 4)
 	data.Insert(4, 4)
 	data.Insert(12, 12)
 	data.Insert(14, 14)
