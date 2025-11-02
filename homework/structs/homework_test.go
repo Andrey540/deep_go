@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"testing"
 	"unsafe"
@@ -8,84 +9,115 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const nameLength = 42
+
 type Option func(*GamePerson)
 
 func WithName(name string) func(*GamePerson) {
+	var nameArr [nameLength]byte
+	copy(nameArr[:], name)
 	return func(person *GamePerson) {
-		// need to implement
+		person.PersonName = PersonName{
+			Data:   nameArr,
+			Length: byte(len(name)),
+		}
 	}
 }
 
 func WithCoordinates(x, y, z int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Coordinates = PersonCoordinates{
+			X: int32(x),
+			Y: int32(y),
+			Z: int32(z),
+		}
 	}
 }
 
 func WithGold(gold int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Wealth = uint32(gold<<1) | person.Wealth&0x1
 	}
 }
 
 func WithMana(mana int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.PersonStrength = setValue(uint32(mana), person.PersonStrength, 10, 22)
 	}
 }
 
 func WithHealth(health int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.PersonStrength = setValue(uint32(health), person.PersonStrength, 10, 12)
 	}
 }
 
 func WithRespect(respect int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Person = setValue(uint8(respect), person.Person, 4, 4)
 	}
 }
 
 func WithStrength(strength int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.PersonStrength = setValue(uint32(strength), person.PersonStrength, 4, 8)
 	}
 }
 
 func WithExperience(experience int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.PersonStrength = setValue(uint32(experience), person.PersonStrength, 4, 4)
 	}
 }
 
 func WithLevel(level int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.PersonStrength = setValue(uint32(level), person.PersonStrength, 4, 0)
 	}
 }
 
 func WithHouse() func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Wealth = person.Wealth | 0x1
 	}
 }
 
 func WithGun() func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Person = setValue(uint8(1), person.Person, 1, 3)
 	}
 }
 
 func WithFamily() func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Person = setValue(uint8(1), person.Person, 1, 2)
 	}
 }
 
 func WithType(personType int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.Person = setValue(uint8(personType), person.Person, 2, 0)
 	}
+}
+
+func getBits[T uint32 | uint8](count, offset int) T {
+	var val T
+	for i := 0; i < count; i++ {
+		val |= 1 << i
+	}
+	return val << offset
+}
+
+func clearBits[T uint32 | uint8](count, offset int) T {
+	return ^getBits[T](count, offset)
+}
+
+func setValue[T uint32 | uint8](value, storage T, count, offset int) T {
+	return value<<offset | storage&clearBits[T](count, offset)
+}
+
+func getValue[T uint32 | uint8](value T, count, offset int) T {
+	return value & getBits[T](count, offset) >> offset
 }
 
 const (
@@ -94,88 +126,115 @@ const (
 	WarriorGamePersonType
 )
 
+type PersonName struct {
+	Data   [nameLength]byte `json:"Data"`
+	Length byte             `json:"Length"`
+}
+
+func (n *PersonName) Name() string {
+	return string(n.Data[:n.Length])
+}
+
+type PersonCoordinates struct {
+	X int32 `json:"X"`
+	Y int32 `json:"Y"`
+	Z int32 `json:"Z"`
+}
+
 type GamePerson struct {
-	// need to implement
+	Coordinates PersonCoordinates `json:"Coordinates"`
+	PersonName  PersonName        `json:"PersonName"`
+
+	/*
+		respect    4 bits
+		hasGun     1 bit
+		hasFamily  1 bit
+		personType 2 bits
+	*/
+	Person uint8 `json:"Person"`
+
+	/*
+		gold     31 bits
+		hasHouse 1 bit
+	*/
+	Wealth uint32 `json:"Wealth"`
+
+	/*
+		mana       10 bits
+		health     10 bits
+		strength   4 bits
+		experience 4 bits
+		level      4 bits
+	*/
+	PersonStrength uint32 `json:"PersonStrength"`
 }
 
 func NewGamePerson(options ...Option) GamePerson {
-	// need to implement
-	return GamePerson{}
+	person := &GamePerson{}
+	for _, option := range options {
+		option(person)
+	}
+	return *person
 }
 
 func (p *GamePerson) Name() string {
-	// need to implement
-	return ""
+	return p.PersonName.Name()
 }
 
 func (p *GamePerson) X() int {
-	// need to implement
-	return 0
+	return int(p.Coordinates.X)
 }
 
 func (p *GamePerson) Y() int {
-	// need to implement
-	return 0
+	return int(p.Coordinates.Y)
 }
 
 func (p *GamePerson) Z() int {
-	// need to implement
-	return 0
+	return int(p.Coordinates.Z)
 }
 
 func (p *GamePerson) Gold() int {
-	// need to implement
-	return 0
+	return int(p.Wealth >> 1)
 }
 
 func (p *GamePerson) Mana() int {
-	// need to implement
-	return 0
+	return int(getValue(p.PersonStrength, 10, 22))
 }
 
 func (p *GamePerson) Health() int {
-	// need to implement
-	return 0
+	return int(getValue(p.PersonStrength, 10, 12))
 }
 
 func (p *GamePerson) Respect() int {
-	// need to implement
-	return 0
+	return int(getValue(p.Person, 4, 4))
 }
 
 func (p *GamePerson) Strength() int {
-	// need to implement
-	return 0
+	return int(getValue(p.PersonStrength, 4, 8))
 }
 
 func (p *GamePerson) Experience() int {
-	// need to implement
-	return 0
+	return int(getValue(p.PersonStrength, 4, 4))
 }
 
 func (p *GamePerson) Level() int {
-	// need to implement
-	return 0
+	return int(getValue(p.PersonStrength, 4, 0))
 }
 
 func (p *GamePerson) HasHouse() bool {
-	// need to implement
-	return false
+	return p.Wealth&0x1 == 0x1
 }
 
 func (p *GamePerson) HasGun() bool {
-	// need to implement
-	return false
+	return getValue(p.Person, 1, 3) == 0x1
 }
 
-func (p *GamePerson) HasFamilty() bool {
-	// need to implement
-	return false
+func (p *GamePerson) HasFamily() bool {
+	return getValue(p.Person, 1, 2) == 0x1
 }
 
 func (p *GamePerson) Type() int {
-	// need to implement
-	return 0
+	return int(getValue(p.Person, 2, 0))
 }
 
 func TestGamePerson(t *testing.T) {
@@ -220,7 +279,15 @@ func TestGamePerson(t *testing.T) {
 	assert.Equal(t, experience, person.Experience())
 	assert.Equal(t, level, person.Level())
 	assert.True(t, person.HasHouse())
-	assert.True(t, person.HasFamilty())
+	assert.True(t, person.HasFamily())
 	assert.False(t, person.HasGun())
 	assert.Equal(t, personType, person.Type())
+
+	serialized, err := json.Marshal(person)
+	assert.Nil(t, err)
+
+	restoredPerson := GamePerson{}
+	err = json.Unmarshal(serialized, &restoredPerson)
+	assert.Nil(t, err)
+	assert.Equal(t, person, restoredPerson)
 }
