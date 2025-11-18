@@ -14,30 +14,14 @@ func Defragment(memory []byte, pointers []unsafe.Pointer) {
 	if len(pointers) == 0 {
 		return
 	}
-	index := 0
-	indexes := make([]int, 0, len(pointers))
-	for _, p := range pointers {
-		for index < len(memory) {
-			if unsafe.Pointer(&memory[index]) == p {
-				indexes = append(indexes, index)
-				index++
-				break
-			}
-			index++
-		}
-	}
-	fragmentedIndex := 0
-	for i, v := range memory {
-		if fragmentedIndex == len(pointers) {
-			return
-		}
-		if i != indexes[fragmentedIndex] {
-			memory[i] = memory[indexes[fragmentedIndex]]
-			pointers[fragmentedIndex] = unsafe.Pointer(&memory[i])
-			memory[indexes[fragmentedIndex]] = v
-			fragmentedIndex++
-		} else if i == indexes[fragmentedIndex] {
-			fragmentedIndex++
+
+	var zeroValue byte
+	for i, p := range pointers {
+		ptr := unsafe.Pointer(&memory[i])
+		if ptr != p {
+			memory[i] = *(*byte)(p)
+			pointers[i] = ptr
+			*(*byte)(p) = zeroValue
 		}
 	}
 }
